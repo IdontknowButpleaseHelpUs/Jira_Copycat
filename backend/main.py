@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
+from dotenv import load_dotenv
+
+load_dotenv()
 import os
 import traceback
 
@@ -10,14 +13,14 @@ from backend.models.user import User
 from backend.api.auth import router as auth_router
 from backend.api.profile import router as profile_router
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://n12e0n3_db_user:abcd1234@m0.t3lbywi.mongodb.net/?appName=M0")
 DB_NAME = os.getenv("DB_NAME", "jira_copycat")
 
 app = FastAPI(title="Jira Copycat API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
