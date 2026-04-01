@@ -1,4 +1,4 @@
-# Project Management App
+# Jira_Copycat (FlowBoard)
 
 Stack:
 - Frontend: Reflex
