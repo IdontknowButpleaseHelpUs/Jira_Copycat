@@ -26,7 +26,7 @@ Open a terminal and run:
 python mock_api.py
 ```
 
-This will start a mock API server on `http://localhost:8000` that provides sample comments.
+This will start a mock API server on `http://localhost:8001` that provides sample comments.
 
 ### 3. Start the Reflex App
 
