@@ -74,6 +74,30 @@ class TeamMember(Base):
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id")
 
 
+class JoinRequestStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class TeamJoinRequest(Base):
+    __tablename__ = "team_join_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=False)
+    handle: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    status: Mapped[JoinRequestStatus] = mapped_column(
+        Enum(JoinRequestStatus, native_enum=False, validate_strings=True, length=20),
+        default=JoinRequestStatus.pending,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    team = relationship("Team")
+
+
 # ── Task ─────────────────────────────────────────────────────────────────────
 
 class Task(Base):

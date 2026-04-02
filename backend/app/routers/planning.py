@@ -5,13 +5,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import PlanningActivity, Task, TaskStatus, TeamMember
 from app.schemas.planning import PlanningCreate, PlanningOut
+from app.team_access import assert_supervisor
 
 router = APIRouter(prefix="/planning", tags=["planning"])
 
 
 @router.post("", response_model=PlanningOut)
 def create_activity(payload: PlanningCreate, db: Session = Depends(get_db)):
-    activity = PlanningActivity(**payload.model_dump())
+    assert_supervisor(db, payload.team_id, payload.member_handle)
+    data = payload.model_dump(exclude={"member_handle"})
+    activity = PlanningActivity(**data)
     db.add(activity)
     db.commit()
     db.refresh(activity)
@@ -28,42 +31,42 @@ def list_activities(team_id: int, category: str | None = None, db: Session = Dep
 
 @router.get("/performance")
 def team_performance(team_id: int, db: Session = Depends(get_db)):
-    task_totals = (
+    members = db.query(TeamMember).filter(
+        TeamMember.team_id == team_id,
+        TeamMember.is_active.is_(True),
+    ).all()
+
+    task_totals = {
+        mid: cnt for mid, cnt in
         db.query(Task.assignee_id, func.count(Task.id))
         .filter(Task.team_id == team_id, Task.assignee_id.isnot(None))
-        .group_by(Task.assignee_id)
-        .all()
-    )
-    completed = (
+        .group_by(Task.assignee_id).all()
+    }
+    completed = {
+        mid: cnt for mid, cnt in
         db.query(Task.assignee_id, func.count(Task.id))
-        .filter(Task.team_id == team_id, Task.assignee_id.isnot(None), Task.status == TaskStatus.done)
-        .group_by(Task.assignee_id)
-        .all()
-    )
-    grade_avg = (
+        .filter(Task.team_id == team_id, Task.status == TaskStatus.done, Task.assignee_id.isnot(None))
+        .group_by(Task.assignee_id).all()
+    }
+    grade_avg = {
+        mid: float(avg) for mid, avg in
         db.query(Task.assignee_id, func.avg(Task.grade))
-        .filter(Task.team_id == team_id, Task.assignee_id.isnot(None), Task.grade.isnot(None))
-        .group_by(Task.assignee_id)
-        .all()
-    )
-    members = {m.id: m for m in db.query(TeamMember).filter(TeamMember.team_id == team_id).all()}
-    completed_map = {mid: cnt for mid, cnt in completed}
-    grade_map = {mid: float(avg) for mid, avg in grade_avg}
+        .filter(Task.team_id == team_id, Task.grade.isnot(None), Task.assignee_id.isnot(None))
+        .group_by(Task.assignee_id).all()
+    }
 
     result = []
-    for assignee_id, total in task_totals:
-        member = members.get(assignee_id)
-        if not member:
-            continue
-        done_count = completed_map.get(assignee_id, 0)
+    for member in members:
+        total = task_totals.get(member.id, 0)
+        done_count = completed.get(member.id, 0)
         result.append(
             {
-                "member_id": assignee_id,
+                "member_id": member.id,
                 "member_name": member.display_name,
                 "assigned_tasks": total,
                 "completed_tasks": done_count,
                 "completion_rate": round((done_count / total) * 100, 2) if total else 0,
-                "avg_grade": grade_map.get(assignee_id),
+                "avg_grade": grade_avg.get(member.id),
             }
         )
     return result

@@ -10,6 +10,7 @@ TaskStatusLiteral = Literal["backlog", "todo", "in_progress", "review", "done", 
 class TaskCreate(BaseModel):
     team_id: int
     creator_name: str
+    creator_handle: str | None = None
     name: str
     description: str = ""
     attachment_url: str = ""

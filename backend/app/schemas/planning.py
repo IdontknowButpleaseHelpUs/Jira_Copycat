@@ -9,6 +9,7 @@ class PlanningCreate(BaseModel):
     timeline_start: datetime
     timeline_end: datetime
     category: str = "general"
+    member_handle: str
 
 
 class PlanningOut(BaseModel):

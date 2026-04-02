@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Comment, Notification, Task, TeamMember
+from app.team_access import user_by_handle
 
 router = APIRouter(prefix="/tasks", tags=["comments"])
 
@@ -52,15 +53,19 @@ def create_comment(task_id: int, body: CommentCreate, db: Session = Depends(get_
     )
     db.add(comment)
 
-    # notify task assignee if commenter is not the assignee
+    # notify task assignee (by user id) if commenter is not the assignee
     if task.assignee_id and task.assignee_id != body.author_id:
-        notif = Notification(
-            recipient_id=task.assignee_id,
-            notif_title="New comment",
-            message=f'{author_name} commented on "{task.name}"',
-            type="COMMENT",
-        )
-        db.add(notif)
+        assignee_tm = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
+        if assignee_tm:
+            u = user_by_handle(db, assignee_tm.handle)
+            if u:
+                notif = Notification(
+                    recipient_id=u.id,
+                    notif_title="New comment",
+                    message=f'{author_name} commented on "{task.name}"',
+                    type="COMMENT",
+                )
+                db.add(notif)
 
     db.commit()
     db.refresh(comment)

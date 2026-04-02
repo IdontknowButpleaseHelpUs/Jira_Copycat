@@ -67,13 +67,10 @@ class AppState(rx.State):
     team_name: str = ""
     team_description: str = ""
     team_join_code: str = ""
-    member_name: str = ""
-    member_handle: str = ""
-    member_role: str = "member"
+    member_invite_handle: str = ""
     join_code_input: str = ""
-    join_display_name: str = ""
-    join_handle: str = ""
-    join_role: str = "member"
+    join_requests: list[dict] = []
+    i_am_supervisor: bool = False
     task_name: str = ""
     task_description: str = ""
     task_attachment: str = ""
@@ -137,6 +134,8 @@ class AppState(rx.State):
         self.performance = []
         self.kanban = {"backlog": [], "todo": [], "in_progress": [], "review": [], "done": [], "returned": []}
         self.active_team_id = 0
+        self.join_requests = []
+        self.i_am_supervisor = False
         self.detail_task = {}
         self.detail_subtasks = []
         self.detail_logs = []
@@ -165,6 +164,7 @@ class AppState(rx.State):
         """Internal — no yield, safe to await."""
         await self.load_teams()
         await self.load_members()
+        await self.load_join_requests()
         await self.load_tasks()
         await self.load_kanban()
         await self.load_activities()
@@ -414,7 +414,10 @@ class AppState(rx.State):
     async def load_teams(self):
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(f"{API_BASE}/teams")
+                resp = await client.get(
+                    f"{API_BASE}/teams",
+                    params={"handle": self.current_user_handle},
+                )
             if resp.status_code == 200:
                 self.teams = resp.json()
         except Exception:
@@ -429,6 +432,8 @@ class AppState(rx.State):
 
     async def load_members(self):
         if not self.active_team_id:
+            self.members = []
+            self._sync_supervisor_flag()
             return
         try:
             async with httpx.AsyncClient() as client:
@@ -437,6 +442,34 @@ class AppState(rx.State):
                 self.members = resp.json()
         except Exception:
             pass
+        self._sync_supervisor_flag()
+
+    def _sync_supervisor_flag(self):
+        self.i_am_supervisor = False
+        h = (self.current_user_handle or "").strip().lower()
+        if not h:
+            return
+        for m in self.members:
+            if str(m.get("handle", "")).strip().lower() == h and m.get("role_name") in ("supervisor", "lead"):
+                self.i_am_supervisor = True
+                break
+
+    async def load_join_requests(self):
+        if not self.active_team_id or not self.i_am_supervisor or not self.current_user_handle:
+            self.join_requests = []
+            return
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{API_BASE}/teams/{self.active_team_id}/join-requests",
+                    params={"supervisor_handle": self.current_user_handle},
+                )
+            if resp.status_code == 200:
+                self.join_requests = resp.json()
+            else:
+                self.join_requests = []
+        except Exception:
+            self.join_requests = []
 
     async def load_tasks(self):
         params = {"team_id": self.active_team_id} if self.active_team_id else {}
@@ -483,17 +516,6 @@ class AppState(rx.State):
         except Exception:
             pass
 
-    async def refresh_all(self):
-        if not self.is_authenticated:
-            yield rx.redirect("/login")
-            return
-        await self.load_teams()
-        await self.load_members()
-        await self.load_tasks()
-        await self.load_kanban()
-        await self.load_activities()
-        await self.load_performance()
-
     async def on_category_filter_change(self, category: str):
         self.category_filter = category
         await self.load_tasks()
@@ -501,6 +523,7 @@ class AppState(rx.State):
     async def on_team_selected(self, team_id: str):
         self.active_team_id = int(team_id) if team_id else 0
         await self.load_members()
+        await self.load_join_requests()
         await self.load_tasks()
         await self.load_kanban()
         await self.load_activities()
@@ -511,7 +534,13 @@ class AppState(rx.State):
     def set_team_join_code(self, v: str): self.team_join_code = v
 
     async def create_team(self):
-        payload = {"name": self.team_name, "description": self.team_description, "join_code": self.team_join_code}
+        payload = {
+            "name": self.team_name,
+            "description": self.team_description,
+            "join_code": self.team_join_code,
+            "creator_handle": self.current_user_handle,
+            "creator_display_name": self.current_user_name,
+        }
         async with httpx.AsyncClient() as client:
             await client.post(f"{API_BASE}/teams", json=payload)
         self.team_name = ""
@@ -519,20 +548,18 @@ class AppState(rx.State):
         self.team_join_code = ""
         await self._refresh_data()
 
-    def set_member_name(self, v: str): self.member_name = v
-    def set_member_handle(self, v: str): self.member_handle = v
-    def set_member_role(self, v: str): self.member_role = v
+    def set_member_invite_handle(self, v: str): self.member_invite_handle = v
     def set_join_code_input(self, v: str): self.join_code_input = v
-    def set_join_display_name(self, v: str): self.join_display_name = v
-    def set_join_handle(self, v: str): self.join_handle = v
-    def set_join_role(self, v: str): self.join_role = v
 
     async def join_team_by_code(self):
         if not self.join_code_input.strip():
             return
-        if not self.join_handle.strip():
-            return rx.toast.error("Please enter a User ID/Handle to join a team.")
-        payload = {"display_name": self.join_display_name, "handle": self.join_handle, "role_name": self.join_role}
+        if not self.current_user_handle.strip():
+            return rx.toast.error("You must be logged in.")
+        payload = {
+            "handle": self.current_user_handle,
+            "display_name": (self.current_user_name or self.current_user_handle).strip() or self.current_user_handle,
+        }
         async with httpx.AsyncClient() as client:
             resp = await client.post(f"{API_BASE}/teams/join/{self.join_code_input.strip()}", json=payload)
         if resp.status_code == 404:
@@ -540,25 +567,61 @@ class AppState(rx.State):
         elif resp.status_code >= 400:
             return rx.toast.error(self._parse_error_detail(resp))
         self.join_code_input = ""
-        self.join_display_name = ""
-        self.join_handle = ""
-        self.join_role = "member"
         await self._refresh_data()
+        return rx.toast.success("Request sent. Your supervisor must approve you.")
 
     async def add_member(self):
         if not self.active_team_id:
             return
-        payload = {"team_id": self.active_team_id, "display_name": self.member_name, "handle": self.member_handle, "role_name": self.member_role}
+        if not self.member_invite_handle.strip():
+            return rx.toast.error("Enter the invitee's User ID.")
+        payload = {
+            "team_id": self.active_team_id,
+            "invitee_handle": self.member_invite_handle.strip(),
+            "inviter_handle": self.current_user_handle,
+        }
         async with httpx.AsyncClient() as client:
-            await client.post(f"{API_BASE}/teams/members", json=payload)
-        self.member_name = ""
-        self.member_handle = ""
-        self.member_role = "member"
+            resp = await client.post(f"{API_BASE}/teams/members", json=payload)
+        if resp.status_code >= 400:
+            return rx.toast.error(self._parse_error_detail(resp))
+        self.member_invite_handle = ""
         await self._refresh_data()
+        return rx.toast.success("Member invited.")
+
+    async def approve_join_request(self, request_id: int):
+        if not self.active_team_id:
+            return
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{API_BASE}/teams/{self.active_team_id}/join-requests/{request_id}/approve",
+                params={"supervisor_handle": self.current_user_handle},
+            )
+        if resp.status_code >= 400:
+            return rx.toast.error(self._parse_error_detail(resp))
+        await self._refresh_data()
+        return rx.toast.success("Member approved.")
+
+    async def reject_join_request(self, request_id: int):
+        if not self.active_team_id:
+            return
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{API_BASE}/teams/{self.active_team_id}/join-requests/{request_id}/reject",
+                params={"supervisor_handle": self.current_user_handle},
+            )
+        if resp.status_code >= 400:
+            return rx.toast.error(self._parse_error_detail(resp))
+        await self._refresh_data()
+        return rx.toast.success("Request rejected.")
 
     async def remove_member(self, member_id: int):
         async with httpx.AsyncClient() as client:
-            await client.delete(f"{API_BASE}/teams/members/{member_id}")
+            resp = await client.delete(
+                f"{API_BASE}/teams/members/{member_id}",
+                params={"supervisor_handle": self.current_user_handle},
+            )
+        if resp.status_code >= 400:
+            return rx.toast.error(self._parse_error_detail(resp))
         await self._refresh_data()
 
     def set_task_name(self, v: str): self.task_name = v
@@ -587,6 +650,7 @@ class AppState(rx.State):
         payload = {
             "team_id": self.active_team_id,
             "creator_name": self.task_creator.strip() or self.current_user_name or "unknown",
+            "creator_handle": self.current_user_handle,
             "name": self.task_name.strip(),
             "description": self.task_description,
             "attachment_url": self.task_attachment,
@@ -628,19 +692,28 @@ class AppState(rx.State):
     def set_activity_category(self, v: str): self.activity_category = v
 
     async def create_activity(self):
-        if not self.active_team_id or not self.activity_start or not self.activity_end:
-            return rx.toast.error("Fill in all activity fields and select a team.")
+        if not self.active_team_id:
+            return rx.toast.error("Select a team first.")
+        if not self.activity_start or not self.activity_end:
+            return rx.toast.error("Please fill in start and end time.")
+        if not self.activity_title.strip():
+            return rx.toast.error("Please enter an activity title.")
         payload = {
             "team_id": self.active_team_id,
-            "title": self.activity_title,
+            "title": self.activity_title.strip(),
             "timeline_start": self._normalize_datetime_local(self.activity_start),
             "timeline_end": self._normalize_datetime_local(self.activity_end),
             "category": self.activity_category,
+            "member_handle": self.current_user_handle,
         }
-        async with httpx.AsyncClient() as client:
-            r = await client.post(f"{API_BASE}/planning", json=payload)
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(f"{API_BASE}/planning", json=payload)
+        except Exception as exc:
+            return rx.toast.error(f"Cannot reach API. ({exc})")
         if r.status_code >= 400:
-            return rx.toast.error(self._parse_error_detail(r))
+            detail = self._parse_error_detail(r)
+            return rx.toast.error(f"Failed: {detail}")
         self.activity_title = ""
         self.activity_start = ""
         self.activity_end = ""
@@ -752,7 +825,11 @@ class AppState(rx.State):
         tid = self.detail_task["id"]
         payload = {"task_id": tid, "title": self.new_subtask_title.strip()}
         async with httpx.AsyncClient() as client:
-            await client.post(f"{API_BASE}/tasks/{tid}/subtasks", json=payload)
+            await client.post(
+                f"{API_BASE}/tasks/{tid}/subtasks",
+                json=payload,
+                params={"creator_handle": self.current_user_handle},
+            )
         self.new_subtask_title = ""
         await self._reload_subtasks_logs(tid)
 

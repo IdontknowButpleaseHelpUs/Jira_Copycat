@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Notification, SubTask, Task, TaskLog, TaskPermission, TaskStatus, TeamMember
+from app.team_access import is_supervisor_row, member_for_handle, norm_handle, notify_user, user_by_handle
 from app.schemas.task import (
     SubTaskCreate,
     SubTaskOut,
@@ -33,18 +34,30 @@ def _push_notification(db: Session, recipient_id: int, title: str, message: str,
 
 @router.post("", response_model=TaskOut)
 def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
+    if not payload.creator_handle:
+        raise HTTPException(status_code=400, detail="creator_handle is required")
+    membership = member_for_handle(db, payload.team_id, payload.creator_handle)
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this team")
+    if not is_supervisor_row(membership):
+        raise HTTPException(status_code=403, detail="Only the team supervisor can create tasks")
     task = Task(**payload.model_dump())
     db.add(task)
     db.flush()
     _create_log(db, task.id, "create_task", payload.creator_name, f"Task created with status {task.status.value}")
     # notify assignee if set at creation
     if task.assignee_id:
-        _push_notification(
-            db, task.assignee_id,
-            "Task assigned",
-            f'You were assigned "{task.name}"',
-            "TASK_ASSIGNED",
-        )
+        assignee = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
+        if assignee:
+            u = user_by_handle(db, assignee.handle)
+            if u:
+                _push_notification(
+                    db,
+                    u.id,
+                    "Task assigned",
+                    f'You were assigned "{task.name}"',
+                    "TASK_ASSIGNED",
+                )
     db.commit()
     db.refresh(task)
     return task
@@ -95,13 +108,18 @@ def update_task(task_id: int, payload: TaskUpdate, actor: str = "system", db: Se
         setattr(task, key, value)
 
     # notify new assignee if changed
-    if payload.assignee_id is not None and payload.assignee_id != old_assignee:
-        _push_notification(
-            db, payload.assignee_id,
-            "Task assigned",
-            f'You were assigned "{task.name}"',
-            "TASK_ASSIGNED",
-        )
+    if payload.assignee_id is not None and payload.assignee_id != old_assignee and payload.assignee_id:
+        assignee = db.query(TeamMember).filter(TeamMember.id == payload.assignee_id).first()
+        if assignee:
+            u = user_by_handle(db, assignee.handle)
+            if u:
+                _push_notification(
+                    db,
+                    u.id,
+                    "Task assigned",
+                    f'You were assigned "{task.name}"',
+                    "TASK_ASSIGNED",
+                )
 
     _create_log(db, task.id, "update_task", actor, "Task updated")
     db.commit()
@@ -125,24 +143,59 @@ def return_task(
     _create_log(db, task.id, "return_task", actor, reason)
     # notify assignee
     if task.assignee_id:
-        _push_notification(
-            db, task.assignee_id,
-            "Work returned",
-            f'"{task.name}" was returned: {reason[:80]}',
-            "WORK_RETURNED",
-        )
+        assignee = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
+        if assignee:
+            u = user_by_handle(db, assignee.handle)
+            if u:
+                _push_notification(
+                    db,
+                    u.id,
+                    "Work returned",
+                    f'"{task.name}" was returned: {reason[:80]}',
+                    "WORK_RETURNED",
+                )
     db.commit()
     db.refresh(task)
     return task
 
 
 @router.post("/{task_id}/subtasks", response_model=SubTaskOut)
-def create_subtask(task_id: int, payload: SubTaskCreate, db: Session = Depends(get_db)):
+def create_subtask(
+    task_id: int,
+    payload: SubTaskCreate,
+    creator_handle: str = Query(..., description="Handle of the member creating the subtask"),
+    db: Session = Depends(get_db),
+):
     if payload.task_id != task_id:
         raise HTTPException(status_code=400, detail="task_id mismatch")
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    actor = member_for_handle(db, task.team_id, creator_handle)
+    if not actor:
+        raise HTTPException(status_code=403, detail="You are not a member of this team")
     subtask = SubTask(**payload.model_dump())
     db.add(subtask)
-    _create_log(db, task_id, "create_subtask", "system", payload.title)
+    label = norm_handle(creator_handle) or actor.handle
+    _create_log(db, task_id, "create_subtask", label, payload.title)
+    db.flush()
+    others = (
+        db.query(TeamMember)
+        .filter(TeamMember.team_id == task.team_id, TeamMember.is_active.is_(True))
+        .all()
+    )
+    for m in others:
+        if m.id == actor.id:
+            continue
+        u = user_by_handle(db, m.handle)
+        if u:
+            notify_user(
+                db,
+                u.id,
+                "New subtask",
+                f"@{label} created a subtask called {payload.title}",
+                "SUBTASK_CREATED",
+            )
     db.commit()
     db.refresh(subtask)
     return subtask

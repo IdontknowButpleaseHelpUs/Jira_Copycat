@@ -1,10 +1,14 @@
-from pydantic import BaseModel
+from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class TeamCreate(BaseModel):
     name: str
     description: str = ""
     join_code: str
+    creator_handle: str | None = None
+    creator_display_name: str | None = None
 
 
 class TeamOut(BaseModel):
@@ -17,17 +21,15 @@ class TeamOut(BaseModel):
         from_attributes = True
 
 
-class TeamMemberCreate(BaseModel):
+class InviteMemberRequest(BaseModel):
     team_id: int
-    display_name: str
-    handle: str
-    role_name: str = "member"
+    invitee_handle: str = Field(..., min_length=1)
+    inviter_handle: str = Field(..., min_length=1)
 
 
-class TeamMemberJoin(BaseModel):
-    display_name: str
-    handle: str
-    role_name: str = "member"
+class JoinTeamRequest(BaseModel):
+    handle: str = Field(..., min_length=1)
+    display_name: str = Field(..., min_length=1)
 
 
 class TeamMemberOut(BaseModel):
@@ -37,6 +39,18 @@ class TeamMemberOut(BaseModel):
     handle: str
     role_name: str
     is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class JoinRequestOut(BaseModel):
+    id: int
+    team_id: int
+    handle: str
+    display_name: str
+    status: str
+    created_at: datetime
 
     class Config:
         from_attributes = True

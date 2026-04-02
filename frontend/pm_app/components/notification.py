@@ -1,5 +1,6 @@
 import httpx
 import reflex as rx
+from pm_app.state import AppState
 
 API_BASE = "http://127.0.0.1:8001"
 
@@ -154,7 +155,7 @@ def notification_bell() -> rx.Component:
     return rx.box(
         rx.button(
             rx.hstack(
-                rx.icon("bell", size=16),
+                rx.icon("bell", size=18),
                 rx.cond(
                     NotificationState.has_unread,
                     rx.badge(
@@ -169,9 +170,15 @@ def notification_bell() -> rx.Component:
                 spacing="1",
                 align="center",
             ),
-            on_click=NotificationState.toggle_panel,
+            on_click=[
+                NotificationState.toggle_panel,
+                NotificationState.load_notifications(AppState.current_user_id),
+            ],
             variant="ghost",
             size="2",
+            min_width="36px",
+            height="36px",
+            padding_x="8px",
         ),
         position="relative",
     )

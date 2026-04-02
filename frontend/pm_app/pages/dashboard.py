@@ -5,7 +5,6 @@ from pm_app.components.notification import notification_bell, notification_panel
 from pm_app.constants import (
     ACTIVITY_CATEGORIES,
     FILE_RULE_PRESETS,
-    ROLE_OPTIONS,
     SELECT_ALL_CATEGORIES,
     TASK_CATEGORIES,
 )
@@ -179,6 +178,13 @@ def _team_switcher() -> rx.Component:
             rx.vstack(
                 rx.text("Active workspace", size="1", weight="bold", color="gray", text_transform="uppercase"),
                 rx.text("Choose the team whose board and data you are editing.", size="2", color="gray"),
+                rx.text(
+                    "Accounts: new users register at /register and sign in at /login. "
+                    "Invites and join requests only work for registered User IDs.",
+                    size="1",
+                    color="gray",
+                    style={"max_width": "480px"},
+                ),
                 spacing="1",
                 align_items="start",
             ),
@@ -523,6 +529,41 @@ def _task_detail_dialog() -> rx.Component:
 def team_panel() -> rx.Component:
     return rx.vstack(
         _team_switcher(),
+        rx.card(
+            rx.vstack(
+                rx.hstack(
+                    rx.icon("id-card", size=18),
+                    rx.heading("Who are you?", size="4"),
+                    spacing="2",
+                    align="center",
+                ),
+                rx.text(
+                    "You are signed in. Your User ID and profile come from your account (profile menu). "
+                    "Supervisors invite others by User ID; join requests use your logged-in identity.",
+                    size="2",
+                    color="gray",
+                ),
+                _form_row(
+                    rx.vstack(
+                        rx.text("User ID", size="2", weight="medium"),
+                        rx.text(AppState.current_user_handle, size="3", weight="bold"),
+                        spacing="1",
+                        align_items="start",
+                    ),
+                    rx.vstack(
+                        rx.text("Display name", size="2", weight="medium"),
+                        rx.text(AppState.current_user_name, size="3"),
+                        spacing="1",
+                        align_items="start",
+                    ),
+                ),
+                rx.text("To change your name or password, use the profile menu (avatar, top right).", size="2", color="gray"),
+                spacing="3",
+                align_items="start",
+                width="100%",
+            ),
+            variant="surface",
+        ),
         rx.hstack(
             rx.card(
                 rx.vstack(
@@ -531,6 +572,15 @@ def team_panel() -> rx.Component:
                         rx.heading("New team", size="4"),
                         spacing="2",
                         align="center",
+                    ),
+                    rx.callout(
+                        "Who is the supervisor? No one picks it manually. The account you are logged in with right now "
+                        "becomes the team Supervisor when you create the team—there is only one per team. "
+                        "After creating, open Members on this team and look for the amber Supervisor badge on your row. "
+                        "Invited or approved members are always regular members, not supervisors.",
+                        icon="info",
+                        color="blue",
+                        size="1",
                     ),
                     _form_row(
                         _labeled_input("Name", "e.g. Platform squad", AppState.team_name, AppState.set_team_name),
@@ -551,27 +601,46 @@ def team_panel() -> rx.Component:
                 flex="2",
                 min_width="320px",
             ),
-            rx.card(
-                rx.vstack(
-                    rx.hstack(
-                        rx.icon("user-plus", size=18),
-                        rx.heading("Add member", size="4"),
-                        spacing="2",
-                        align="center",
+            rx.cond(
+                AppState.i_am_supervisor,
+                rx.card(
+                    rx.vstack(
+                        rx.hstack(
+                            rx.icon("user-plus", size=18),
+                            rx.heading("Invite member", size="4"),
+                            spacing="2",
+                            align="center",
+                        ),
+                        rx.text(
+                            "Only the team supervisor can invite. The person must already have registered a User ID.",
+                            size="2",
+                            color="gray",
+                        ),
+                        _labeled_input(
+                            "Invitee User ID",
+                            "john_doe",
+                            AppState.member_invite_handle,
+                            AppState.set_member_invite_handle,
+                        ),
+                        rx.button("Invite member", on_click=AppState.add_member, size="3", color_scheme="indigo"),
+                        spacing="4",
+                        align_items="start",
+                        width="100%",
                     ),
-                    _form_row(
-                        _labeled_input("Display name", "Name", AppState.member_name, AppState.set_member_name),
-                        _labeled_input("User ID", "@john_doe", AppState.member_handle, AppState.set_member_handle),
-                        _labeled_select("Role", ROLE_OPTIONS, AppState.member_role, AppState.set_member_role),
-                    ),
-                    rx.button("Invite member", on_click=AppState.add_member, size="3", color_scheme="indigo"),
-                    spacing="4",
-                    align_items="start",
-                    width="100%",
+                    variant="classic",
+                    flex="1",
+                    min_width="280px",
                 ),
-                variant="classic",
-                flex="1",
-                min_width="280px",
+                rx.card(
+                    rx.callout(
+                        "Only your team supervisor can invite people by User ID.",
+                        color="amber",
+                        size="2",
+                    ),
+                    variant="classic",
+                    flex="1",
+                    min_width="280px",
+                ),
             ),
             spacing="4",
             width="100%",
@@ -582,23 +651,74 @@ def team_panel() -> rx.Component:
             rx.vstack(
                 rx.hstack(
                     rx.icon("key-round", size=18),
-                    rx.heading("Join with code", size="4"),
+                    rx.heading("Request to join", size="4"),
                     spacing="2",
                     align="center",
                 ),
-                rx.text("Use a team join code to add yourself (or a demo user) to that team.", size="2", color="gray"),
-                _form_row(
-                    _labeled_input("Join code", "e.g. alpha-2026", AppState.join_code_input, AppState.set_join_code_input),
-                    _labeled_input("Display name", "Your name", AppState.join_display_name, AppState.set_join_display_name),
-                    _labeled_input("User ID", "@john_doe", AppState.join_handle, AppState.set_join_handle),
-                    _labeled_select("Role", ROLE_OPTIONS, AppState.join_role, AppState.set_join_role),
+                rx.text(
+                    "Uses your logged-in User ID. The team supervisor gets a notification and must approve you.",
+                    size="2",
+                    color="gray",
                 ),
-                rx.button("Join team", on_click=AppState.join_team_by_code, size="3", variant="surface"),
+                _labeled_input("Join code", "e.g. alpha-2026", AppState.join_code_input, AppState.set_join_code_input),
+                rx.button("Send join request", on_click=AppState.join_team_by_code, size="3", variant="surface"),
                 spacing="4",
                 align_items="start",
                 width="100%",
             ),
             variant="classic",
+        ),
+        rx.cond(
+            AppState.i_am_supervisor,
+            rx.card(
+                rx.vstack(
+                    rx.heading("Pending join requests", size="4"),
+                    rx.text("Approve or reject people who asked to join this team.", size="2", color="gray"),
+                    rx.divider(),
+                    rx.cond(
+                        AppState.join_requests.length() == 0,
+                        rx.text("No pending requests.", size="2", color="gray"),
+                        rx.vstack(
+                            rx.foreach(
+                                AppState.join_requests,
+                                lambda jr: rx.hstack(
+                                    rx.vstack(
+                                        rx.text(jr["display_name"], weight="bold", size="2"),
+                                        rx.text(jr["handle"], size="1", color="gray"),
+                                        spacing="0",
+                                        align_items="start",
+                                    ),
+                                    rx.spacer(),
+                                    rx.button(
+                                        "Approve",
+                                        size="2",
+                                        variant="solid",
+                                        color_scheme="green",
+                                        on_click=AppState.approve_join_request(jr["id"]),
+                                    ),
+                                    rx.button(
+                                        "Reject",
+                                        size="2",
+                                        variant="surface",
+                                        color_scheme="red",
+                                        on_click=AppState.reject_join_request(jr["id"]),
+                                    ),
+                                    width="100%",
+                                    align="center",
+                                    padding_y="8px",
+                                    border_bottom="1px solid var(--gray-5)",
+                                ),
+                            ),
+                            spacing="0",
+                            width="100%",
+                        ),
+                    ),
+                    spacing="3",
+                    align_items="start",
+                    width="100%",
+                ),
+                variant="surface",
+            ),
         ),
         rx.card(
             rx.vstack(
@@ -635,6 +755,12 @@ def team_panel() -> rx.Component:
         rx.card(
             rx.vstack(
                 rx.heading("Members on this team", size="4"),
+                rx.text(
+                    "The account with the amber “Supervisor” badge is the team owner: they invite members, "
+                    "approve join requests, create tasks, and plan activities. Everyone else is a member.",
+                    size="2",
+                    color="gray",
+                ),
                 rx.divider(),
                 rx.table.root(
                     rx.table.header(
@@ -651,14 +777,28 @@ def team_panel() -> rx.Component:
                             lambda m: rx.table.row(
                                 rx.table.cell(m["display_name"]),
                                 rx.table.cell(m["handle"]),
-                                rx.table.cell(rx.badge(m["role_name"], variant="soft", color_scheme="blue")),
                                 rx.table.cell(
-                                    rx.button(
-                                        "Remove",
-                                        size="1",
-                                        variant="ghost",
-                                        color_scheme="red",
-                                        on_click=AppState.remove_member(m["id"]),
+                                    rx.cond(
+                                        m["role_name"] == "supervisor",
+                                        rx.badge("Supervisor", variant="solid", color_scheme="amber"),
+                                        rx.cond(
+                                            m["role_name"] == "lead",
+                                            rx.badge("Supervisor", variant="solid", color_scheme="amber"),
+                                            rx.badge(m["role_name"], variant="soft", color_scheme="blue"),
+                                        ),
+                                    ),
+                                ),
+                                rx.table.cell(
+                                    rx.cond(
+                                        AppState.i_am_supervisor,
+                                        rx.button(
+                                            "Remove",
+                                            size="1",
+                                            variant="ghost",
+                                            color_scheme="red",
+                                            on_click=AppState.remove_member(m["id"]),
+                                        ),
+                                        rx.text(""),
                                     ),
                                 ),
                             ),
@@ -777,63 +917,71 @@ def board_panel() -> rx.Component:
 def work_panel() -> rx.Component:
     return rx.vstack(
         _team_switcher(),
-        rx.card(
-            rx.vstack(
-                rx.hstack(
-                    rx.icon("circle-plus", size=20),
-                    rx.heading("New task", size="4"),
-                    spacing="2",
-                    align="center",
-                ),
-                _form_row(
-                    _labeled_input("Title", "Task title", AppState.task_name, AppState.set_task_name),
-                    _labeled_select("Category", TASK_CATEGORIES, AppState.task_category, AppState.set_task_category),
-                    _labeled_input("Creator", "Your name", AppState.task_creator, AppState.set_task_creator),
-                ),
-                _labeled_input(
-                    "Description",
-                    "Acceptance criteria, context…",
-                    AppState.task_description,
-                    AppState.set_task_description,
-                ),
-                _form_row(
-                    _labeled_datetime("Deadline (optional)", AppState.task_deadline, AppState.set_task_deadline),
-                    rx.vstack(
-                        rx.text("Assignee", size="2", weight="medium"),
-                        rx.select.root(
-                            rx.select.trigger(placeholder="Unassigned", width="100%"),
-                            rx.select.content(
-                                rx.select.item("Unassigned", value="none"),
-                                rx.foreach(
-                                    AppState.members,
-                                    lambda m: rx.select.item(m["display_name"], value=m["id"].to_string()),
+        rx.cond(
+            AppState.i_am_supervisor,
+            rx.card(
+                rx.vstack(
+                    rx.hstack(
+                        rx.icon("circle-plus", size=20),
+                        rx.heading("New task", size="4"),
+                        spacing="2",
+                        align="center",
+                    ),
+                    _form_row(
+                        _labeled_input("Title", "Task title", AppState.task_name, AppState.set_task_name),
+                        _labeled_select("Category", TASK_CATEGORIES, AppState.task_category, AppState.set_task_category),
+                        _labeled_input("Creator", "Your name", AppState.task_creator, AppState.set_task_creator),
+                    ),
+                    _labeled_input(
+                        "Description",
+                        "Acceptance criteria, context…",
+                        AppState.task_description,
+                        AppState.set_task_description,
+                    ),
+                    _form_row(
+                        _labeled_datetime("Deadline (optional)", AppState.task_deadline, AppState.set_task_deadline),
+                        rx.vstack(
+                            rx.text("Assignee", size="2", weight="medium"),
+                            rx.select.root(
+                                rx.select.trigger(placeholder="Unassigned", width="100%"),
+                                rx.select.content(
+                                    rx.select.item("Unassigned", value="none"),
+                                    rx.foreach(
+                                        AppState.members,
+                                        lambda m: rx.select.item(m["display_name"], value=m["id"].to_string()),
+                                    ),
                                 ),
+                                value=AppState.task_assignee_choice,
+                                on_change=AppState.set_task_assignee_choice,
+                                size="3",
                             ),
-                            value=AppState.task_assignee_choice,
-                            on_change=AppState.set_task_assignee_choice,
-                            size="3",
+                            spacing="1",
+                            align_items="start",
+                            flex="1",
+                            min_width="200px",
                         ),
-                        spacing="1",
-                        align_items="start",
-                        flex="1",
-                        min_width="200px",
                     ),
-                ),
-                _form_row(
-                    _labeled_input("Link / attachment URL", "https://…", AppState.task_attachment, AppState.set_task_attachment),
-                    _labeled_select(
-                        "Allowed file types",
-                        FILE_RULE_PRESETS,
-                        AppState.task_file_rules,
-                        AppState.set_task_file_rules,
+                    _form_row(
+                        _labeled_input("Link / attachment URL", "https://…", AppState.task_attachment, AppState.set_task_attachment),
+                        _labeled_select(
+                            "Allowed file types",
+                            FILE_RULE_PRESETS,
+                            AppState.task_file_rules,
+                            AppState.set_task_file_rules,
+                        ),
                     ),
+                    rx.button("Create task", on_click=AppState.create_task, size="3", color_scheme="indigo"),
+                    spacing="4",
+                    align_items="start",
+                    width="100%",
                 ),
-                rx.button("Create task", on_click=AppState.create_task, size="3", color_scheme="indigo"),
-                spacing="4",
-                align_items="start",
-                width="100%",
+                variant="classic",
             ),
-            variant="classic",
+            rx.callout(
+                "Only the team supervisor can create tasks. Open a task on the board to add subtasks.",
+                color="amber",
+                size="2",
+            ),
         ),
         rx.card(
             rx.vstack(
@@ -902,26 +1050,34 @@ def work_panel() -> rx.Component:
 def plan_panel() -> rx.Component:
     return rx.vstack(
         _team_switcher(),
-        rx.card(
-            rx.vstack(
-                rx.heading("Schedule activity", size="4"),
-                _form_row(
-                    _labeled_input("Title", "Milestone name", AppState.activity_title, AppState.set_activity_title),
-                    _labeled_datetime("Start", AppState.activity_start, AppState.set_activity_start),
-                    _labeled_datetime("End", AppState.activity_end, AppState.set_activity_end),
-                    _labeled_select(
-                        "Category",
-                        ACTIVITY_CATEGORIES,
-                        AppState.activity_category,
-                        AppState.set_activity_category,
+        rx.cond(
+            AppState.i_am_supervisor,
+            rx.card(
+                rx.vstack(
+                    rx.heading("Schedule activity", size="4"),
+                    _form_row(
+                        _labeled_input("Title", "Milestone name", AppState.activity_title, AppState.set_activity_title),
+                        _labeled_datetime("Start", AppState.activity_start, AppState.set_activity_start),
+                        _labeled_datetime("End", AppState.activity_end, AppState.set_activity_end),
+                        _labeled_select(
+                            "Category",
+                            ACTIVITY_CATEGORIES,
+                            AppState.activity_category,
+                            AppState.set_activity_category,
+                        ),
                     ),
+                    rx.button("Add to timeline", on_click=AppState.create_activity, size="3"),
+                    spacing="4",
+                    align_items="start",
+                    width="100%",
                 ),
-                rx.button("Add to timeline", on_click=AppState.create_activity, size="3"),
-                spacing="4",
-                align_items="start",
-                width="100%",
+                variant="classic",
             ),
-            variant="classic",
+            rx.callout(
+                "Only the team supervisor can add planning activities.",
+                color="amber",
+                size="2",
+            ),
         ),
         rx.vstack(
             rx.heading("Timeline", size="4"),
