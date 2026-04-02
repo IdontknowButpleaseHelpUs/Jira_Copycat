@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-sqlalchemy
-pymysql
-pydantic
-email-validator
-python-dotenv
