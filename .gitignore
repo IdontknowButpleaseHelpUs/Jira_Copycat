@@ -1,0 +1,28 @@
+# Reflex
+.cache/
+*.reflex.lock
+
+# FastAPI
+.venv/
+.env
+.env.dev
+.idea/
+*.pyc
+*.pyo
+*~
+__pycache__/
+
+# Local upload files
+*uploads
+*.db
+
+# Unnecessary files
+.DS_Store
+Thumbs.db
+.states
+.web/
+.next/
+out/
+build/
+.env.local
+
