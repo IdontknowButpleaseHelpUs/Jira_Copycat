@@ -9,7 +9,7 @@
 .idea/
 *.pyc
 *.pyo
-*~
+
 __pycache__/
 
 # Local upload files

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.schemas.user import ChangePasswordRequest, UpdateProfileRequest, UserResponse
-from app.token import hash_password, verify_password
+from app.tokens import hash_password, verify_password
 
 router = APIRouter(prefix="/users", tags=["profile"])
 

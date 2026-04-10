@@ -219,6 +219,90 @@ def _team_switcher() -> rx.Component:
     )
 
 
+def _course_selector() -> rx.Component:
+    """Course type tabs (Academic / Projects) and course dropdown."""
+    return rx.card(
+        rx.hstack(
+            rx.vstack(
+                rx.text("Course workspace", size="1", weight="bold", color="gray", text_transform="uppercase"),
+                rx.text("Select your course and team to work with.", size="2", color="gray"),
+                spacing="1",
+                align_items="start",
+            ),
+            rx.spacer(),
+            rx.vstack(
+                # Course type tabs
+                rx.hstack(
+                    rx.button(
+                        rx.hstack(rx.icon("graduation-cap", size=16), rx.text("Academic"), spacing="2"),
+                        on_click=AppState.on_course_type_change("academic"),
+                        variant=rx.cond(AppState.active_course_type == "academic", "solid", "soft"),
+                        size="2",
+                        color_scheme="indigo",
+                    ),
+                    rx.button(
+                        rx.hstack(rx.icon("folder-code", size=16), rx.text("Projects"), spacing="2"),
+                        on_click=AppState.on_course_type_change("project"),
+                        variant=rx.cond(AppState.active_course_type == "project", "solid", "soft"),
+                        size="2",
+                        color_scheme="green",
+                    ),
+                    spacing="2",
+                ),
+                # Course dropdown
+                rx.cond(
+                    rx.cond(
+                        AppState.active_course_type == "academic",
+                        AppState.academic_courses.length() > 0,
+                        AppState.project_courses.length() > 0,
+                    ),
+                    rx.select.root(
+                        rx.select.trigger(width="280px"),
+                        rx.select.content(
+                            rx.foreach(
+                                rx.cond(
+                                    AppState.active_course_type == "academic",
+                                    AppState.academic_courses,
+                                    AppState.project_courses,
+                                ),
+                                lambda c: rx.select.item(
+                                    f"{c['code']} - {c['name']}",
+                                    value=c["id"].to_string(),
+                                ),
+                            ),
+                        ),
+                        value=AppState.active_course_id.to_string(),
+                        on_change=AppState.on_course_selected,
+                        size="2",
+                    ),
+                    rx.callout(
+                        "No courses available for this category.",
+                        color="amber",
+                        size="2",
+                    ),
+                ),
+                spacing="2",
+                align_items="end",
+            ),
+            width="100%",
+            align="center",
+            spacing="4",
+            flex_wrap="wrap",
+        ),
+        variant="surface",
+    )
+
+
+def _course_team_switcher() -> rx.Component:
+    """Combined course and team selector."""
+    return rx.vstack(
+        _course_selector(),
+        _team_switcher(),
+        spacing="3",
+        width="100%",
+    )
+
+
 def _form_row(*children: rx.Component) -> rx.Component:
     return rx.hstack(
         *children,
@@ -745,7 +829,7 @@ def _task_detail_dialog() -> rx.Component:
 
 def team_panel() -> rx.Component:
     return rx.vstack(
-        _team_switcher(),
+        _course_team_switcher(),
         rx.card(
             rx.vstack(
                 rx.hstack(
@@ -877,7 +961,8 @@ def team_panel() -> rx.Component:
                     size="2",
                     color="gray",
                 ),
-                _labeled_input("Join code", "e.g. alpha-2026", AppState.join_code_input, AppState.set_join_code_input),
+                _labeled_input("Team name", "e.g. PRJ301 Team 1", AppState.join_team_name_input, AppState.set_join_team_name_input),
+                _labeled_input("Password", "e.g. alpha-2026", AppState.join_code_input, AppState.set_join_code_input),
                 rx.button("Send join request", on_click=AppState.join_team_by_code, size="3", variant="surface"),
                 spacing="4",
                 align_items="start",
@@ -1108,7 +1193,7 @@ def _kanban_column(status: str, title: str, accent: str) -> rx.Component:
 
 def board_panel() -> rx.Component:
     return rx.vstack(
-        _team_switcher(),
+        _course_team_switcher(),
         rx.box(
             rx.hstack(
                 _kanban_column("backlog", "Backlog", "var(--gray-9)"),
@@ -1133,7 +1218,7 @@ def board_panel() -> rx.Component:
 
 def work_panel() -> rx.Component:
     return rx.vstack(
-        _team_switcher(),
+        _course_team_switcher(),
         rx.cond(
             AppState.i_am_supervisor,
             rx.card(
@@ -1266,7 +1351,7 @@ def work_panel() -> rx.Component:
 
 def plan_panel() -> rx.Component:
     return rx.vstack(
-        _team_switcher(),
+        _course_team_switcher(),
         rx.cond(
             AppState.i_am_supervisor,
             rx.card(
@@ -1348,7 +1433,7 @@ def plan_panel() -> rx.Component:
 
 def insights_panel() -> rx.Component:
     return rx.vstack(
-        _team_switcher(),
+        _course_team_switcher(),
         rx.grid(
             rx.foreach(
                 AppState.performance,

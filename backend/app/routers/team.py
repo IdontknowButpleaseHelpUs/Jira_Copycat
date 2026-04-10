@@ -21,10 +21,11 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 
 @router.post("", response_model=TeamOut)
 def create_team(payload: TeamCreate, db: Session = Depends(get_db)):
-    exists = db.query(Team).filter((Team.name == payload.name) | (Team.join_code == payload.join_code)).first()
+    exists = db.query(Team).filter(Team.name == payload.name).first()
     if exists:
-        raise HTTPException(status_code=400, detail="Team name or join code already exists")
+        raise HTTPException(status_code=400, detail="Team name already exists")
     team = Team(
+        course_id=payload.course_id,
         name=payload.name,
         description=payload.description,
         join_code=payload.join_code,
@@ -68,15 +69,18 @@ def list_teams(handle: str | None = Query(default=None), db: Session = Depends(g
     )
 
 
-@router.post("/join/{join_code}", response_model=JoinRequestOut)
-def request_join_team(join_code: str, payload: JoinTeamRequest, db: Session = Depends(get_db)):
+@router.post("/join", response_model=JoinRequestOut)
+def request_join_team(payload: JoinTeamRequest, db: Session = Depends(get_db)):
     nh = norm_handle(payload.handle)
     acc = user_by_handle(db, nh)
     if not acc:
         raise HTTPException(status_code=400, detail="User ID must match a registered account")
-    team = db.query(Team).filter(Team.join_code == join_code).first()
+    # Find team by name, then verify password
+    team = db.query(Team).filter(func.lower(Team.name) == payload.team_name.lower()).first()
     if not team:
-        raise HTTPException(status_code=404, detail="Join code not found")
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.join_code != payload.join_code:
+        raise HTTPException(status_code=401, detail="Invalid password")
     existing = db.query(TeamMember).filter(
         TeamMember.team_id == team.id,
         func.lower(TeamMember.handle) == nh.lower(),

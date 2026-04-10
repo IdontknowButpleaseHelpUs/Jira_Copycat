@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine, ensure_mysql_tasks_closed_column, ensure_sqlite_schema
-from app.routers import auth, comment, notification, planning, profile, task, team
+from app.routers import auth, comment, course, notification, planning, profile, task, team
 
 Base.metadata.create_all(bind=engine)
 ensure_sqlite_schema()
@@ -27,6 +27,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(course.router)
 app.include_router(team.router)
 app.include_router(task.router)
 app.include_router(comment.router)

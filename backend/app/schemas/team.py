@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class TeamCreate(BaseModel):
+    course_id: int
     name: str
     description: str = ""
     join_code: str
@@ -13,6 +14,7 @@ class TeamCreate(BaseModel):
 
 class TeamOut(BaseModel):
     id: int
+    course_id: int
     name: str
     description: str
     join_code: str
@@ -28,6 +30,8 @@ class InviteMemberRequest(BaseModel):
 
 
 class JoinTeamRequest(BaseModel):
+    team_name: str = Field(..., min_length=1)
+    join_code: str = Field(..., min_length=1)
     handle: str = Field(..., min_length=1)
     display_name: str = Field(..., min_length=1)
 
