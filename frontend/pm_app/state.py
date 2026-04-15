@@ -54,7 +54,17 @@ class AppState(rx.State):
     change_pw_is_error: bool = False
 
     # ── Teams / Members / Tasks / Planning ───────────────────────────────────
-    teams: list[dict] = []
+    # ── Courses (new) ─────────────────────────────────────────────────────────
+    courses: list[dict] = []
+    active_course_id: int = 0
+    active_course_type: str = "academic"  # "academic" or "project"
+    active_course_name: str = ""
+    academic_courses: list[dict] = []
+    project_courses: list[dict] = []
+
+    # ── Teams (now scoped by course) ─────────────────────────────────────────
+    teams: list[dict] = []  # teams for the active course
+    all_teams: list[dict] = []  # all teams across all courses (for the user)
     members: list[dict] = []
     tasks: list[dict] = []
     activities: list[dict] = []
@@ -68,8 +78,10 @@ class AppState(rx.State):
     team_name: str = ""
     team_description: str = ""
     team_join_code: str = ""
+    team_course_id: int = 0  # course_id for new team creation
     member_invite_handle: str = ""
-    join_code_input: str = ""
+    join_team_name_input: str = ""  # team name for joining
+    join_code_input: str = ""  # password for joining
     join_requests: list[dict] = []
     i_am_supervisor: bool = False
     current_member_id: int = 0  # TeamMember.id for the current user in current team
@@ -103,6 +115,7 @@ class AppState(rx.State):
     detail_task_closed: bool = False
     new_subtask_title: str = ""
     has_teams: bool = False
+    has_courses: bool = False
 
     # ── HELPERS ───────────────────────────────────────────────────────────────
 
@@ -123,6 +136,11 @@ class AppState(rx.State):
             return "; ".join(msgs) if msgs else str(detail)
         return str(detail) if detail else f"Unexpected error (HTTP {res.status_code})"
 
+    def _auth_headers(self) -> dict:
+        if self.access_token:
+            return {"Authorization": f"Bearer {self.access_token}"}
+        return {}
+
     def _clear_user_state(self):
         """Wipe all user-specific state — call on logout and before login."""
         self.is_authenticated = False
@@ -137,7 +155,17 @@ class AppState(rx.State):
         self.current_user_description = ""
         self.current_user_handle_changes_left = 1
         self.current_member_id = 0  # Reset member ID
+        # Course state
+        self.courses = []
+        self.academic_courses = []
+        self.project_courses = []
+        self.active_course_id = 0
+        self.active_course_type = "academic"
+        self.active_course_name = ""
+        self.has_courses = False
+        # Team state
         self.teams = []
+        self.all_teams = []
         self.members = []
         self.tasks = []
         self.activities = []
@@ -176,7 +204,9 @@ class AppState(rx.State):
             self.reset_is_error = True
 
     async def _refresh_data(self):
-        """Internal — no yield, safe to await."""
+        """Internal — no yield, safe to await. Loads courses, then teams scoped by active course."""
+        await self.load_courses()
+        await self.load_all_teams()
         await self.load_teams()
         await self.load_members()
         await self.load_join_requests()
@@ -191,6 +221,9 @@ class AppState(rx.State):
             yield rx.redirect("/login")
             return
         await self._refresh_data()
+        # If no courses available, show toast
+        if not self.has_courses:
+            yield rx.toast.info("No courses available. Contact your administrator.")
 
     async def login(self):
         if not self.auth_handle or not self.auth_password:
@@ -424,9 +457,39 @@ class AppState(rx.State):
             self.change_pw_message = str(e)
             self.change_pw_is_error = True
 
-    # ── TEAM / TASK EVENTS ───────────────────────────────────────────────────
+    # ── COURSE / TEAM EVENTS ───────────────────────────────────────────────────
 
-    async def load_teams(self):
+    async def load_courses(self):
+        """Load all courses the user is enrolled in."""
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{API_BASE}/courses/my",
+                    headers=self._auth_headers(),
+                )
+            if resp.status_code == 200:
+                self.courses = resp.json()
+        except Exception:
+            self.courses = []
+        self.has_courses = len(self.courses) > 0
+        # Split into academic and project courses
+        self.academic_courses = [c for c in self.courses if c.get("course_type") == "academic"]
+        self.project_courses = [c for c in self.courses if c.get("course_type") == "project"]
+        # Set default active course if none selected
+        if not self.active_course_id:
+            if self.active_course_type == "academic" and self.academic_courses:
+                self.active_course_id = self.academic_courses[0]["id"]
+                self.active_course_name = self.academic_courses[0]["name"]
+            elif self.active_course_type == "project" and self.project_courses:
+                self.active_course_id = self.project_courses[0]["id"]
+                self.active_course_name = self.project_courses[0]["name"]
+            elif self.courses:
+                self.active_course_id = self.courses[0]["id"]
+                self.active_course_name = self.courses[0]["name"]
+                self.active_course_type = self.courses[0].get("course_type", "academic")
+
+    async def load_all_teams(self):
+        """Load all teams the user is a member of (across all courses)."""
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
@@ -434,9 +497,29 @@ class AppState(rx.State):
                     params={"handle": self.current_user_handle},
                 )
             if resp.status_code == 200:
-                self.teams = resp.json()
+                self.all_teams = resp.json()
         except Exception:
-            pass
+            self.all_teams = []
+
+    async def load_teams(self):
+        """Load teams for the active course (scoped)."""
+        if not self.active_course_id:
+            self.teams = []
+            self.has_teams = False
+            self.active_team_id = 0
+            return
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{API_BASE}/courses/{self.active_course_id}/teams",
+                    headers=self._auth_headers(),
+                )
+            if resp.status_code == 200:
+                self.teams = resp.json()
+            else:
+                self.teams = []
+        except Exception:
+            self.teams = []
         self.has_teams = len(self.teams) > 0
         if self.teams:
             ids = {t["id"] for t in self.teams}
@@ -445,13 +528,31 @@ class AppState(rx.State):
         else:
             self.active_team_id = 0
 
-    async def load_members(self):
-        if not self.active_team_id:
-            self.members = []
-            self._sync_supervisor_flag()
-            return
-        await self._load_members_for_team(self.active_team_id)
-        self._sync_supervisor_flag()
+    async def on_course_type_change(self, course_type: str):
+        """Switch between academic and project tabs."""
+        self.active_course_type = course_type
+        # Find first course of this type
+        if course_type == "academic" and self.academic_courses:
+            await self.on_course_selected(str(self.academic_courses[0]["id"]))
+        elif course_type == "project" and self.project_courses:
+            await self.on_course_selected(str(self.project_courses[0]["id"]))
+
+    async def on_course_selected(self, course_id: str):
+        """Select a course and load its teams."""
+        cid = int(course_id) if course_id else 0
+        self.active_course_id = cid
+        # Update active course name
+        for c in self.courses:
+            if c["id"] == cid:
+                self.active_course_name = c["name"]
+                break
+        await self.load_teams()
+        await self.load_members()
+        await self.load_join_requests()
+        await self.load_tasks()
+        await self.load_kanban()
+        await self.load_activities()
+        await self.load_performance()
 
     async def _load_members_for_team(self, team_id: int):
         """Load members for a specific team (used when opening tasks from other teams)."""
@@ -462,6 +563,26 @@ class AppState(rx.State):
                 self.members = resp.json()
         except Exception:
             pass
+
+    async def load_members(self):
+        """Load members for the active team."""
+        if not self.active_team_id:
+            self.members = []
+            self._sync_supervisor_flag()
+            return
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{API_BASE}/teams/{self.active_team_id}/members",
+                    headers=self._auth_headers(),
+                )
+            if resp.status_code == 200:
+                self.members = resp.json()
+            else:
+                self.members = []
+        except Exception:
+            self.members = []
+        self._sync_supervisor_flag()
 
     def _sync_supervisor_flag(self):
         self.i_am_supervisor = False
@@ -557,7 +678,15 @@ class AppState(rx.State):
     def set_team_join_code(self, v: str): self.team_join_code = v
 
     async def create_team(self):
+        """Create a new team within the current course."""
+        if not self.active_course_id:
+            return rx.toast.error("Select a course first.")
+        if not self.team_name.strip():
+            return rx.toast.error("Enter a team name.")
+        if not self.team_join_code.strip():
+            return rx.toast.error("Enter a join code.")
         payload = {
+            "course_id": self.active_course_id,
             "name": self.team_name,
             "description": self.team_description,
             "join_code": self.team_join_code,
@@ -565,30 +694,41 @@ class AppState(rx.State):
             "creator_display_name": self.current_user_name,
         }
         async with httpx.AsyncClient() as client:
-            await client.post(f"{API_BASE}/teams", json=payload)
+            resp = await client.post(f"{API_BASE}/teams", json=payload)
+        if resp.status_code >= 400:
+            return rx.toast.error(self._parse_error_detail(resp))
         self.team_name = ""
         self.team_description = ""
         self.team_join_code = ""
         await self._refresh_data()
+        return rx.toast.success("Team created.")
 
     def set_member_invite_handle(self, v: str): self.member_invite_handle = v
+    def set_join_team_name_input(self, v: str): self.join_team_name_input = v
     def set_join_code_input(self, v: str): self.join_code_input = v
 
     async def join_team_by_code(self):
+        if not self.join_team_name_input.strip():
+            return rx.toast.error("Enter a team name.")
         if not self.join_code_input.strip():
-            return
+            return rx.toast.error("Enter the team password.")
         if not self.current_user_handle.strip():
             return rx.toast.error("You must be logged in.")
         payload = {
+            "team_name": self.join_team_name_input.strip(),
+            "join_code": self.join_code_input.strip(),
             "handle": self.current_user_handle,
             "display_name": (self.current_user_name or self.current_user_handle).strip() or self.current_user_handle,
         }
         async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{API_BASE}/teams/join/{self.join_code_input.strip()}", json=payload)
+            resp = await client.post(f"{API_BASE}/teams/join", json=payload)
         if resp.status_code == 404:
-            return rx.toast.error("Join code not found.")
+            return rx.toast.error("Team not found.")
+        if resp.status_code == 401:
+            return rx.toast.error("Invalid password.")
         elif resp.status_code >= 400:
             return rx.toast.error(self._parse_error_detail(resp))
+        self.join_team_name_input = ""
         self.join_code_input = ""
         await self._refresh_data()
         return rx.toast.success("Request sent. Your supervisor must approve you.")

@@ -28,6 +28,11 @@ class NotificationType(str, enum.Enum):
     COMMENT = "COMMENT"
 
 
+class CourseType(str, enum.Enum):
+    academic = "academic"
+    project = "project"
+
+
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
 class User(Base):
@@ -45,17 +50,51 @@ class User(Base):
     refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+# ── Course ───────────────────────────────────────────────────────────────────
+
+class Course(Base):
+    __tablename__ = "courses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    course_type: Mapped[CourseType] = mapped_column(
+        Enum(CourseType, native_enum=False, validate_strings=True, length=20),
+        default=CourseType.academic,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    teams = relationship("Team", back_populates="course", cascade="all, delete-orphan")
+    enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan")
+
+
+class CourseEnrollment(Base):
+    __tablename__ = "course_enrollments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    course = relationship("Course", back_populates="enrollments")
+    user = relationship("User")
+
+
 # ── Team ─────────────────────────────────────────────────────────────────────
 
 class Team(Base):
     __tablename__ = "teams"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    join_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    join_code: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    course = relationship("Course", back_populates="teams")
     members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="team", cascade="all, delete-orphan")
 

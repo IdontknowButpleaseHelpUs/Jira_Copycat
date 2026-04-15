@@ -15,7 +15,7 @@ from app.schemas.user import (
     ResetPasswordRequest,
     TokenResponse,
 )
-from app.token import (
+from app.tokens import (
     create_access_token,
     create_refresh_token,
     create_reset_token,
