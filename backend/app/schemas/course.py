@@ -31,7 +31,3 @@ class CourseEnrollmentOut(BaseModel):
     class Config:
         from_attributes = True
 
-
-class CourseWithTeamsOut(CourseOut):
-    """Course with its teams (for listing user's courses)."""
-    pass

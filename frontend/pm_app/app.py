@@ -5,7 +5,7 @@ from .state import AppState
 
 app = rx.App(
     theme=rx.theme(
-        accent_color="indigo",
+        accent_color="blue",
         gray_color="slate",
         radius="medium",
     ),

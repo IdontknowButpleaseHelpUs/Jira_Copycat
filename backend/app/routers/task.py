@@ -89,7 +89,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     db.add(task)
     db.flush()
     _create_log(db, task.id, "create_task", payload.creator_name, f"Task created with status {task.status.value}")
-    # notify assignee if set at creation
+                                        
     if task.assignee_id:
         assignee = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
         if assignee:
@@ -135,7 +135,7 @@ def kanban_view(team_id: int = Query(...), db: Session = Depends(get_db)):
 
 @router.get("/submissions/{submission_id}/file")
 def download_submission_file(submission_id: int, db: Session = Depends(get_db)):
-    """Stream the uploaded file with correct MIME type (view PDF in browser)."""
+
     row = db.query(TaskSubmission).filter(TaskSubmission.id == submission_id).first()
     if not row or not row.stored_path:
         raise HTTPException(status_code=404, detail="No file for this submission")
@@ -295,7 +295,7 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-
+#SEQ DIA1
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(task_id: int, payload: TaskUpdate, actor: str = "system", db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
@@ -310,7 +310,7 @@ def update_task(task_id: int, payload: TaskUpdate, actor: str = "system", db: Se
             value = TaskStatus(value) if isinstance(value, str) else value
         setattr(task, key, value)
 
-    # notify new assignee if changed
+                                    
     if payload.assignee_id is not None and payload.assignee_id != old_assignee and payload.assignee_id:
         assignee = db.query(TeamMember).filter(TeamMember.id == payload.assignee_id).first()
         if assignee:
@@ -346,7 +346,7 @@ def return_task(
     task.rejection_flag = True
     task.rejection_reason = reason
     _create_log(db, task.id, "return_task", actor, reason)
-    # notify assignee
+                     
     if task.assignee_id:
         assignee = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
         if assignee:

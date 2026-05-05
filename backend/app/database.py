@@ -7,7 +7,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 load_dotenv()
 
 _explicit = os.getenv("DATABASE_URL", "").strip()
-# Default SQLite for local dev; set USE_SQLITE=false (or 0/no) to use MySQL defaults below.
+                                                                                           
 _use_sqlite = os.getenv("USE_SQLITE", "true").lower() not in ("0", "false", "no")
 
 if _explicit:
@@ -41,7 +41,7 @@ def get_db():
 
 
 def ensure_sqlite_schema():
-    """Add columns missing from older DB files (SQLite only)."""
+
     if not str(engine.url).startswith("sqlite"):
         return
     with engine.begin() as conn:

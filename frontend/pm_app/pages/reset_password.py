@@ -6,7 +6,7 @@ def reset_password_page() -> rx.Component:
     return rx.center(
         rx.card(
             rx.vstack(
-                rx.heading("Reset Password", size="6", color="var(--indigo-9)"),
+                rx.heading("Reset Password", size="6", color="var(--blue-9)"),
                 rx.text("Enter your new password below.", color="gray", size="2"),
                 rx.cond(
                     ~AppState.reset_is_success,
@@ -32,7 +32,7 @@ def reset_password_page() -> rx.Component:
                             on_click=AppState.reset_password,
                             width="100%",
                             size="3",
-                            color_scheme="indigo",
+                            color_scheme="blue",
                         ),
                         spacing="4",
                         width="100%",
@@ -48,7 +48,7 @@ def reset_password_page() -> rx.Component:
                 ),
                 rx.cond(
                     AppState.reset_is_success,
-                    rx.link("Go to Login", href="/login", color="var(--indigo-9)", size="2"),
+                    rx.link("Go to Login", href="/login", color="var(--blue-9)", size="2"),
                 ),
                 spacing="4",
                 width="100%",

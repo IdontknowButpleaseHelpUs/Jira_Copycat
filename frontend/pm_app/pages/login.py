@@ -6,7 +6,7 @@ def login_page() -> rx.Component:
     return rx.center(
         rx.card(
             rx.vstack(
-                rx.heading("Welcome Back", size="6", color="var(--indigo-9)"),
+                rx.heading("Welcome Back", size="6", color="var(--blue-9)"),
                 rx.text("Sign in with your User ID.", color="gray", size="2"),
                 rx.input(
                     placeholder="User ID",
@@ -24,7 +24,7 @@ def login_page() -> rx.Component:
                     width="100%",
                     size="3",
                 ),
-                rx.link("Forgot password?", href="/forgot-password", color="var(--indigo-9)", size="2"),
+                rx.link("Forgot password?", href="/forgot-password", color="var(--blue-9)", size="2"),
                 rx.cond(
                     AppState.auth_message != "",
                     rx.text(
@@ -39,11 +39,11 @@ def login_page() -> rx.Component:
                     loading=AppState.auth_is_loading,
                     width="100%",
                     size="3",
-                    color_scheme="indigo",
+                    color_scheme="blue",
                 ),
                 rx.hstack(
                     rx.text("No account?", color="gray", size="2"),
-                    rx.link("Register", href="/register", color="var(--indigo-9)", size="2"),
+                    rx.link("Register", href="/register", color="var(--blue-9)", size="2"),
                     spacing="1",
                 ),
                 spacing="4",

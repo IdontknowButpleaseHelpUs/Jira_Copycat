@@ -1,13 +1,13 @@
-"""
-Seed script for demo courses and enrollments.
-Run this after creating users to set up academic/project courses.
-Usage: python -m app.seed_courses (from backend directory)
-"""
+
+
+
+
+
 
 import sys
 from pathlib import Path
 
-# Ensure backend is on path
+                           
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sqlalchemy.orm import Session
@@ -19,13 +19,13 @@ from app.tokens import hash_password as get_password_hash
 def seed_courses_and_enrollments():
     db: Session = SessionLocal()
     try:
-        # Create demo courses if they don't exist
+                                                 
         courses_data = [
-            # Academic courses
+                              
             {"code": "CS101", "name": "Introduction to Computer Science", "description": "Fundamentals of computing, algorithms, and programming basics.", "course_type": CourseType.academic},
             {"code": "CS202", "name": "Data Structures and Algorithms", "description": "Advanced data structures, algorithm analysis, and optimization.", "course_type": CourseType.academic},
             {"code": "MATH201", "name": "Discrete Mathematics", "description": "Logic, set theory, combinatorics, and graph theory.", "course_type": CourseType.academic},
-            # Project courses
+                             
             {"code": "PRJ301", "name": "Software Engineering Project", "description": "Team-based software development project with agile methodologies.", "course_type": CourseType.project},
             {"code": "PRJ401", "name": "Capstone Project", "description": "Final year project demonstrating comprehensive engineering skills.", "course_type": CourseType.project},
         ]
@@ -43,7 +43,7 @@ def seed_courses_and_enrollments():
                 created_courses[data["code"]] = existing
                 print(f"Course exists: {data['code']}")
 
-        # Ensure demo users exist
+                                 
         demo_users = [
             {"handle": "user1", "name": "Name Surname1", "email": "email1@uni.edu", "password": "password123"},
             {"handle": "user2", "name": "Name Surname2", "email": "email2@uni.edu", "password": "password123"},
@@ -69,7 +69,7 @@ def seed_courses_and_enrollments():
                 created_users[data["handle"]] = existing
                 print(f"User exists: {data['handle']}")
 
-        # Enroll all demo users in all courses
+                                              
         for user in created_users.values():
             for course in created_courses.values():
                 existing = (
@@ -85,18 +85,18 @@ def seed_courses_and_enrollments():
                     db.add(enrollment)
                     print(f"Enrolled {user.handle} in {course.code}")
 
-        # Create demo teams for project courses
+                                               
         project_courses = [c for c in created_courses.values() if c.course_type == CourseType.project]
         team_counter = 1
 
         for course in project_courses:
-            # Check if teams already exist for this course
+                                                          
             existing_teams = db.query(Team).filter(Team.course_id == course.id).all()
             if existing_teams:
                 print(f"Teams already exist for {course.code}")
                 continue
 
-            # Create 2 teams per project course
+                                               
             for team_num in range(1, 3):
                 team_name = f"{course.code} Team {team_num}"
                 join_code = f"{course.code.lower()}-team{team_num}"
@@ -110,7 +110,7 @@ def seed_courses_and_enrollments():
                 db.add(team)
                 db.flush()
 
-                # Add all users as members with one as supervisor
+                                                                 
                 for i, user in enumerate(created_users.values()):
                     role = "supervisor" if i == 0 else "member"
                     member = TeamMember(

@@ -1,4 +1,4 @@
-"""Team role and handle helpers (Jira_Copycat)."""
+
 
 from fastapi import HTTPException
 from sqlalchemy import func

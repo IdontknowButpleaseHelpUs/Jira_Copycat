@@ -21,17 +21,6 @@ def get_current_user_id(
     authorization: str | None = Header(default=None),
     x_user_handle: str | None = Header(default=None, alias="X-User-Handle"),
 ):
-    """Resolve the current user id.
-
-    Supports:
-    - Authorization: Bearer <access_token> where token.sub == user handle
-    - X-User-Handle header
-    - ?handle=<user_handle> query parameter
-
-    This keeps the API compatible with the existing frontend pattern while allowing
-    proper token auth.
-    """
-
     token = None
     if authorization:
         parts = authorization.strip().split(" ", 1)

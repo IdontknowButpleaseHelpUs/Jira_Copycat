@@ -6,7 +6,7 @@ def forgot_password_page() -> rx.Component:
     return rx.center(
         rx.card(
             rx.vstack(
-                rx.heading("Forgot Password", size="6", color="var(--indigo-9)"),
+                rx.heading("Forgot Password", size="6", color="var(--blue-9)"),
                 rx.text(
                     "Enter your User ID. If you have an email on file, we'll send a reset link.",
                     color="gray",
@@ -33,9 +33,9 @@ def forgot_password_page() -> rx.Component:
                     on_click=AppState.forgot_password,
                     width="100%",
                     size="3",
-                    color_scheme="indigo",
+                    color_scheme="blue",
                 ),
-                rx.link("Back to Login", href="/login", color="var(--indigo-9)", size="2"),
+                rx.link("Back to Login", href="/login", color="var(--blue-9)", size="2"),
                 spacing="4",
                 width="100%",
             ),

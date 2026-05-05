@@ -14,7 +14,7 @@ def list_my_courses(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """List all courses the current user is enrolled in."""
+
     enrollments = (
         db.query(CourseEnrollment)
         .filter(CourseEnrollment.user_id == user_id)
@@ -33,8 +33,8 @@ def list_courses_by_type(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """List courses by type (academic or project) for enrolled user."""
-    # Get user's enrolled course IDs
+
+                                    
     enrollments = (
         db.query(CourseEnrollment)
         .filter(CourseEnrollment.user_id == user_id)
@@ -44,7 +44,7 @@ def list_courses_by_type(
     if not course_ids:
         return []
 
-    # Filter by type
+                    
     try:
         ct = CourseType(course_type.lower())
     except ValueError:
@@ -64,8 +64,8 @@ def get_course(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Get a single course by ID (if user is enrolled)."""
-    # Check enrollment
+
+                      
     enrollment = (
         db.query(CourseEnrollment)
         .filter(
@@ -92,12 +92,12 @@ def get_course_teams(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Get all teams in a course that the user is a member of."""
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
 
-    # Check enrollment
+                      
     enrollment = (
         db.query(CourseEnrollment)
         .filter(
@@ -112,7 +112,7 @@ def get_course_teams(
             detail="Not enrolled in this course",
         )
 
-    # Get teams in this course where user is a member
+                                                     
     teams = (
         db.query(Team)
         .join(TeamMember, Team.id == TeamMember.team_id)
@@ -124,7 +124,7 @@ def get_course_teams(
         .all()
     )
 
-    # Format response
+                     
     result = []
     for team in teams:
         member = (

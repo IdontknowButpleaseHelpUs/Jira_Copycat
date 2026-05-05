@@ -8,7 +8,7 @@ API_BASE = "http://127.0.0.1:8001"
 
 
 class AppState(rx.State):
-    # ── Auth ─────────────────────────────────────────────────────────────────
+                                                                               
     is_authenticated: bool = False
     access_token: str = ""
     refresh_token_val: str = ""
@@ -22,7 +22,7 @@ class AppState(rx.State):
     current_user_description: str = ""
     current_user_handle_changes_left: int = 1
 
-    # ── Auth form fields ─────────────────────────────────────────────────────
+                                                                               
     auth_handle: str = ""
     auth_password: str = ""
     auth_confirm_password: str = ""
@@ -41,7 +41,7 @@ class AppState(rx.State):
     reset_is_error: bool = False
     reset_is_success: bool = False
 
-    # ── Profile edit fields ───────────────────────────────────────────────────
+                                                                                
     profile_edit_handle: str = ""
     profile_edit_name: str = ""
     profile_edit_email: str = ""
@@ -53,18 +53,18 @@ class AppState(rx.State):
     change_pw_message: str = ""
     change_pw_is_error: bool = False
 
-    # ── Teams / Members / Tasks / Planning ───────────────────────────────────
-    # ── Courses (new) ─────────────────────────────────────────────────────────
+                                                                               
+                                                                                
     courses: list[dict] = []
     active_course_id: int = 0
-    active_course_type: str = "academic"  # "academic" or "project"
+    active_course_type: str = "academic"                           
     active_course_name: str = ""
     academic_courses: list[dict] = []
     project_courses: list[dict] = []
 
-    # ── Teams (now scoped by course) ─────────────────────────────────────────
-    teams: list[dict] = []  # teams for the active course
-    all_teams: list[dict] = []  # all teams across all courses (for the user)
+                                                                               
+    teams: list[dict] = []                               
+    all_teams: list[dict] = []                                               
     members: list[dict] = []
     tasks: list[dict] = []
     activities: list[dict] = []
@@ -78,13 +78,13 @@ class AppState(rx.State):
     team_name: str = ""
     team_description: str = ""
     team_join_code: str = ""
-    team_course_id: int = 0  # course_id for new team creation
+    team_course_id: int = 0                                   
     member_invite_handle: str = ""
-    join_team_name_input: str = ""  # team name for joining
-    join_code_input: str = ""  # password for joining
+    join_team_name_input: str = ""                         
+    join_code_input: str = ""                        
     join_requests: list[dict] = []
     i_am_supervisor: bool = False
-    current_member_id: int = 0  # TeamMember.id for the current user in current team
+    current_member_id: int = 0                                                      
     task_name: str = ""
     task_description: str = ""
     task_attachment: str = ""
@@ -117,7 +117,7 @@ class AppState(rx.State):
     has_teams: bool = False
     has_courses: bool = False
 
-    # ── HELPERS ───────────────────────────────────────────────────────────────
+                                                                                
 
     @staticmethod
     def _parse_error_detail(res) -> str:
@@ -142,7 +142,7 @@ class AppState(rx.State):
         return {}
 
     def _clear_user_state(self):
-        """Wipe all user-specific state — call on logout and before login."""
+
         self.is_authenticated = False
         self.access_token = ""
         self.refresh_token_val = ""
@@ -154,8 +154,8 @@ class AppState(rx.State):
         self.current_user_image = ""
         self.current_user_description = ""
         self.current_user_handle_changes_left = 1
-        self.current_member_id = 0  # Reset member ID
-        # Course state
+        self.current_member_id = 0                   
+                      
         self.courses = []
         self.academic_courses = []
         self.project_courses = []
@@ -163,7 +163,7 @@ class AppState(rx.State):
         self.active_course_type = "academic"
         self.active_course_name = ""
         self.has_courses = False
-        # Team state
+                    
         self.teams = []
         self.all_teams = []
         self.members = []
@@ -185,7 +185,7 @@ class AppState(rx.State):
         self.task_dialog_open = False
         self.has_teams = False
 
-    # ── AUTH EVENTS ──────────────────────────────────────────────────────────
+                                                                               
 
     def set_auth_handle(self, v: str): self.auth_handle = v
     def set_auth_password(self, v: str): self.auth_password = v
@@ -204,7 +204,7 @@ class AppState(rx.State):
             self.reset_is_error = True
 
     async def _refresh_data(self):
-        """Internal — no yield, safe to await. Loads courses, then teams scoped by active course."""
+
         await self.load_courses()
         await self.load_all_teams()
         await self.load_teams()
@@ -216,12 +216,12 @@ class AppState(rx.State):
         await self.load_performance()
 
     async def refresh_all(self):
-        """Page-load handler — can yield."""
+
         if not self.is_authenticated:
             yield rx.redirect("/login")
             return
         await self._refresh_data()
-        # If no courses available, show toast
+                                             
         if not self.has_courses:
             yield rx.toast.info("No courses available. Contact your administrator.")
 
@@ -232,7 +232,7 @@ class AppState(rx.State):
             return
         self.auth_is_loading = True
         self.auth_message = ""
-        # wipe previous session before loading new one
+                                                      
         self._clear_user_state()
         yield
         try:
@@ -383,7 +383,7 @@ class AppState(rx.State):
         except Exception:
             pass
 
-    # ── PROFILE EDIT EVENTS ──────────────────────────────────────────────────
+                                                                               
 
     def set_profile_edit_handle(self, v: str): self.profile_edit_handle = v
     def set_profile_edit_name(self, v: str): self.profile_edit_name = v
@@ -457,10 +457,10 @@ class AppState(rx.State):
             self.change_pw_message = str(e)
             self.change_pw_is_error = True
 
-    # ── COURSE / TEAM EVENTS ───────────────────────────────────────────────────
+                                                                                 
 
     async def load_courses(self):
-        """Load all courses the user is enrolled in."""
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
@@ -472,10 +472,10 @@ class AppState(rx.State):
         except Exception:
             self.courses = []
         self.has_courses = len(self.courses) > 0
-        # Split into academic and project courses
+                                                 
         self.academic_courses = [c for c in self.courses if c.get("course_type") == "academic"]
         self.project_courses = [c for c in self.courses if c.get("course_type") == "project"]
-        # Set default active course if none selected
+                                                    
         if not self.active_course_id:
             if self.active_course_type == "academic" and self.academic_courses:
                 self.active_course_id = self.academic_courses[0]["id"]
@@ -489,7 +489,7 @@ class AppState(rx.State):
                 self.active_course_type = self.courses[0].get("course_type", "academic")
 
     async def load_all_teams(self):
-        """Load all teams the user is a member of (across all courses)."""
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
@@ -502,7 +502,7 @@ class AppState(rx.State):
             self.all_teams = []
 
     async def load_teams(self):
-        """Load teams for the active course (scoped)."""
+
         if not self.active_course_id:
             self.teams = []
             self.has_teams = False
@@ -529,19 +529,19 @@ class AppState(rx.State):
             self.active_team_id = 0
 
     async def on_course_type_change(self, course_type: str):
-        """Switch between academic and project tabs."""
+
         self.active_course_type = course_type
-        # Find first course of this type
+                                        
         if course_type == "academic" and self.academic_courses:
             await self.on_course_selected(str(self.academic_courses[0]["id"]))
         elif course_type == "project" and self.project_courses:
             await self.on_course_selected(str(self.project_courses[0]["id"]))
 
     async def on_course_selected(self, course_id: str):
-        """Select a course and load its teams."""
+
         cid = int(course_id) if course_id else 0
         self.active_course_id = cid
-        # Update active course name
+                                   
         for c in self.courses:
             if c["id"] == cid:
                 self.active_course_name = c["name"]
@@ -555,7 +555,7 @@ class AppState(rx.State):
         await self.load_performance()
 
     async def _load_members_for_team(self, team_id: int):
-        """Load members for a specific team (used when opening tasks from other teams)."""
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(f"{API_BASE}/teams/{team_id}/members")
@@ -565,7 +565,7 @@ class AppState(rx.State):
             pass
 
     async def load_members(self):
-        """Load members for the active team."""
+
         if not self.active_team_id:
             self.members = []
             self._sync_supervisor_flag()
@@ -678,7 +678,7 @@ class AppState(rx.State):
     def set_team_join_code(self, v: str): self.team_join_code = v
 
     async def create_team(self):
-        """Create a new team within the current course."""
+
         if not self.active_course_id:
             return rx.toast.error("Select a course first.")
         if not self.team_name.strip():
@@ -964,20 +964,20 @@ class AppState(rx.State):
         await self._reload_detail_task(task_id)
         if not self.detail_task.get("id"):
             return
-        # Ensure members are loaded for the task's team (may differ from active_team_id)
+                                                                                        
         task_team_id = self.detail_task.get("team_id")
         if task_team_id and task_team_id != self.active_team_id:
             await self._load_members_for_team(task_team_id)
-            # Re-sync assignee flags now that correct members are loaded
+                                                                        
             self._sync_detail_assignee_flags()
         await self._reload_subtasks_logs(task_id)
         self.return_reason = ""
         self.new_subtask_title = ""
         self.task_dialog_open = True
         yield CommentState.set_user_context(
-            self.current_member_id,  # Use TeamMember.id, not User.id
+            self.current_member_id,                                  
             self.current_user_name,
-            self.current_user_role.upper(),  # Use role_name from team_members
+            self.current_user_role.upper(),                                   
         )
         yield CommentState.load_comments(task_id)
 

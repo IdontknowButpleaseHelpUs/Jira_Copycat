@@ -6,7 +6,7 @@ def register_page() -> rx.Component:
     return rx.center(
         rx.card(
             rx.vstack(
-                rx.heading("Create Account", size="6", color="var(--indigo-9)"),
+                rx.heading("Create Account", size="6", color="var(--blue-9)"),
                 rx.text("Join FlowBoard today.", color="gray", size="2"),
                 rx.input(
                     placeholder="Display name *",
@@ -60,11 +60,11 @@ def register_page() -> rx.Component:
                     loading=AppState.auth_is_loading,
                     width="100%",
                     size="3",
-                    color_scheme="indigo",
+                    color_scheme="blue",
                 ),
                 rx.hstack(
                     rx.text("Already have an account?", color="gray", size="2"),
-                    rx.link("Login", href="/login", color="var(--indigo-9)", size="2"),
+                    rx.link("Login", href="/login", color="var(--blue-9)", size="2"),
                     spacing="1",
                 ),
                 spacing="4",

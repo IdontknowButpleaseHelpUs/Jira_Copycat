@@ -75,7 +75,7 @@ def request_join_team(payload: JoinTeamRequest, db: Session = Depends(get_db)):
     acc = user_by_handle(db, nh)
     if not acc:
         raise HTTPException(status_code=400, detail="User ID must match a registered account")
-    # Find team by name, then verify password
+                                             
     team = db.query(Team).filter(func.lower(Team.name) == payload.team_name.lower()).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")

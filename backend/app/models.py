@@ -33,7 +33,7 @@ class CourseType(str, enum.Enum):
     project = "project"
 
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
+                                                                               
 
 class User(Base):
     __tablename__ = "users"
@@ -50,7 +50,7 @@ class User(Base):
     refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-# ── Course ───────────────────────────────────────────────────────────────────
+                                                                               
 
 class Course(Base):
     __tablename__ = "courses"
@@ -80,9 +80,7 @@ class CourseEnrollment(Base):
 
     course = relationship("Course", back_populates="enrollments")
     user = relationship("User")
-
-
-# ── Team ─────────────────────────────────────────────────────────────────────
+                                                                               
 
 class Team(Base):
     __tablename__ = "teams"
@@ -137,7 +135,7 @@ class TeamJoinRequest(Base):
     team = relationship("Team")
 
 
-# ── Task ─────────────────────────────────────────────────────────────────────
+                                                                               
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -176,7 +174,7 @@ class Task(Base):
 
 
 class TaskSubmission(Base):
-    """Deliverable uploaded by the assignee (title, description, optional file)."""
+
 
     __tablename__ = "task_submissions"
 
@@ -243,7 +241,7 @@ class PlanningActivity(Base):
     category: Mapped[str] = mapped_column(String(100), default="general")
 
 
-# ── Comment ──────────────────────────────────────────────────────────────────
+                                                                               
 
 class Comment(Base):
     __tablename__ = "comments"
@@ -257,9 +255,7 @@ class Comment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     task = relationship("Task", back_populates="comments")
-
-
-# ── Notification ─────────────────────────────────────────────────────────────
+                                          
 
 class Notification(Base):
     __tablename__ = "notifications"

@@ -53,7 +53,7 @@ def create_comment(task_id: int, body: CommentCreate, db: Session = Depends(get_
     )
     db.add(comment)
 
-    # notify task assignee (by user id) if commenter is not the assignee
+                                                                        
     if task.assignee_id and task.assignee_id != body.author_id:
         assignee_tm = db.query(TeamMember).filter(TeamMember.id == task.assignee_id).first()
         if assignee_tm:

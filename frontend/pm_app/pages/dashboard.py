@@ -27,10 +27,10 @@ def _toolbar() -> rx.Component:
     return rx.hstack(
         rx.hstack(
             rx.box(
-                rx.icon("layers", size=22, color="var(--indigo-9)"),
+                rx.icon("layers", size=22, color="var(--blue-9)"),
                 padding="0.5rem",
                 border_radius="8px",
-                background="var(--indigo-3)",
+                background="var(--blue-3)",
             ),
             _page_heading("FlowBoard", "Kanban, teams, and delivery in one workspace."),
             spacing="3",
@@ -47,7 +47,7 @@ def _toolbar() -> rx.Component:
             ),
             notification_bell(),
             rx.color_mode.button(size="2", variant="ghost"),
-            # ── User avatar / profile trigger ─────────────────────────────────
+                                                                                
             rx.cond(
                 AppState.is_authenticated,
                 rx.hstack(
@@ -125,7 +125,7 @@ def _toolbar() -> rx.Component:
                                 ),
                                 rx.text("Description", size="2", weight="medium"),
                                 rx.text_area(value=AppState.profile_edit_description, on_change=AppState.set_profile_edit_description, width="100%", size="2"),
-                                rx.button("Save profile", on_click=AppState.save_profile, size="2", color_scheme="indigo"),
+                                rx.button("Save profile", on_click=AppState.save_profile, size="2", color_scheme="blue"),
                                 rx.divider(),
                                 rx.text("Change password", size="3", weight="bold"),
                                 rx.input(placeholder="Current password", type="password", value=AppState.change_pw_current, on_change=AppState.set_change_pw_current, width="100%", size="2"),
@@ -146,7 +146,6 @@ def _toolbar() -> rx.Component:
                                 spacing="3",
                                 align_items="start",
                                 width="100%",
-                                max_width="480px",
                             ),
                             size="3",
                         ),
@@ -157,7 +156,7 @@ def _toolbar() -> rx.Component:
                     align="center",
                 ),
                 rx.link(
-                    rx.button("Login", size="2", variant="soft", color_scheme="indigo"),
+                    rx.button("Login", size="2", variant="soft", color_scheme="blue"),
                     href="/login",
                 ),
             ),
@@ -220,7 +219,7 @@ def _team_switcher() -> rx.Component:
 
 
 def _course_selector() -> rx.Component:
-    """Course type tabs (Academic / Projects) and course dropdown."""
+
     return rx.card(
         rx.hstack(
             rx.vstack(
@@ -231,25 +230,25 @@ def _course_selector() -> rx.Component:
             ),
             rx.spacer(),
             rx.vstack(
-                # Course type tabs
+                                  
                 rx.hstack(
                     rx.button(
                         rx.hstack(rx.icon("graduation-cap", size=16), rx.text("Academic"), spacing="2"),
                         on_click=AppState.on_course_type_change("academic"),
                         variant=rx.cond(AppState.active_course_type == "academic", "solid", "soft"),
                         size="2",
-                        color_scheme="indigo",
+                        color_scheme="blue",
                     ),
                     rx.button(
                         rx.hstack(rx.icon("folder-code", size=16), rx.text("Projects"), spacing="2"),
                         on_click=AppState.on_course_type_change("project"),
                         variant=rx.cond(AppState.active_course_type == "project", "solid", "soft"),
                         size="2",
-                        color_scheme="green",
+                        color_scheme="blue",
                     ),
                     spacing="2",
                 ),
-                # Course dropdown
+                                 
                 rx.cond(
                     rx.cond(
                         AppState.active_course_type == "academic",
@@ -294,7 +293,7 @@ def _course_selector() -> rx.Component:
 
 
 def _course_team_switcher() -> rx.Component:
-    """Combined course and team selector."""
+
     return rx.vstack(
         _course_selector(),
         _team_switcher(),
@@ -786,11 +785,11 @@ def _task_detail_dialog() -> rx.Component:
                     overflow_y="auto",
                     width="100%",
                 ),
-                # ── Comments ─────────────────────────────────────────────────
+                                                                               
                 rx.divider(),
                 rx.heading("Comments", size="3"),
                 comment_section(),
-                # ─────────────────────────────────────────────────────────────
+                                                                               
                 rx.hstack(
                     rx.cond(
                         AppState.i_am_supervisor,
@@ -869,8 +868,8 @@ def team_panel() -> rx.Component:
             rx.card(
                 rx.vstack(
                     rx.hstack(
-                        rx.icon("building-2", size=18),
-                        rx.heading("New team", size="4"),
+                        rx.icon("building-2", size=18, color="var(--sky-11)"),
+                        rx.heading("New team", size="4", color="var(--sky-11)"),
                         spacing="2",
                         align="center",
                     ),
@@ -880,7 +879,7 @@ def team_panel() -> rx.Component:
                         "After creating, open Members on this team and look for the amber Supervisor badge on your row. "
                         "Invited or approved members are always regular members, not supervisors.",
                         icon="info",
-                        color="blue",
+                        color="sky",
                         size="1",
                     ),
                     _form_row(
@@ -898,7 +897,8 @@ def team_panel() -> rx.Component:
                     align_items="start",
                     width="100%",
                 ),
-                variant="classic",
+                variant="surface",
+                color="sky",
                 flex="2",
                 min_width="320px",
             ),
@@ -923,7 +923,7 @@ def team_panel() -> rx.Component:
                             AppState.member_invite_handle,
                             AppState.set_member_invite_handle,
                         ),
-                        rx.button("Invite member", on_click=AppState.add_member, size="3", color_scheme="indigo"),
+                        rx.button("Invite member", on_click=AppState.add_member, size="3", color_scheme="blue"),
                         spacing="4",
                         align_items="start",
                         width="100%",
@@ -1143,7 +1143,7 @@ def _kanban_column(status: str, title: str, accent: str) -> rx.Component:
                                     task["status"],
                                     variant="outline",
                                     size="1",
-                                    color_scheme="indigo",
+                                    color_scheme="blue",
                                 ),
                                 spacing="2",
                                 flex_wrap="wrap",
@@ -1199,7 +1199,7 @@ def board_panel() -> rx.Component:
                 _kanban_column("backlog", "Backlog", "var(--gray-9)"),
                 _kanban_column("todo", "To do", "var(--blue-9)"),
                 _kanban_column("in_progress", "In progress", "var(--amber-9)"),
-                _kanban_column("review", "Review", "var(--violet-9)"),
+                _kanban_column("review", "Review", "var(--cyan-9)"),
                 _kanban_column("done", "Done", "var(--green-9)"),
                 _kanban_column("returned", "Returned", "var(--red-9)"),
                 spacing="3",
@@ -1272,7 +1272,7 @@ def work_panel() -> rx.Component:
                             AppState.set_task_file_rules,
                         ),
                     ),
-                    rx.button("Create task", on_click=AppState.create_task, size="3", color_scheme="indigo"),
+                    rx.button("Create task", on_click=AppState.create_task, size="3", color_scheme="blue"),
                     spacing="4",
                     align_items="start",
                     width="100%",
@@ -1317,7 +1317,7 @@ def work_panel() -> rx.Component:
                                         align_items="start",
                                     ),
                                 ),
-                                rx.table.cell(rx.badge(task["status"], variant="soft", color_scheme="indigo")),
+                                rx.table.cell(rx.badge(task["status"], variant="soft", color_scheme="blue")),
                                 rx.table.cell(task["category"]),
                                 rx.table.cell(rx.cond(task["deadline"] != None, task["deadline"], "—")),
                                 rx.table.cell(
@@ -1391,7 +1391,7 @@ def plan_panel() -> rx.Component:
                             width="4px",
                             align_self="stretch",
                             min_height="3rem",
-                            background="var(--indigo-9)",
+                            background="var(--blue-9)",
                             border_radius="2px",
                         ),
                         rx.vstack(
